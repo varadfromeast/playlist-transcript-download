@@ -2,6 +2,8 @@ import os
 import argparse
 import json
 import subprocess
+import requests
+import http.cookiejar
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
 
 def get_videos_from_playlist(url):
@@ -47,12 +49,25 @@ def format_timestamp(seconds):
 def sanitize_filename(name):
     return "".join(c for c in name if c.isalnum() or c in " ._-").strip()
 
-def download_transcripts(playlist_url, output_dir, languages):
+def download_transcripts(playlist_url, output_dir, languages, cookies_file=None):
     os.makedirs(output_dir, exist_ok=True)
     videos = get_videos_from_playlist(playlist_url)
     if not videos:
         print("No videos found.")
         return
+
+    # Setup the YouTubeTranscriptApi with cookies if provided
+    http_client = requests.Session()
+    if cookies_file:
+        if os.path.exists(cookies_file):
+            print(f"Loading cookies from {cookies_file}...")
+            cookie_jar = http.cookiejar.MozillaCookieJar(cookies_file)
+            cookie_jar.load(ignore_discard=True, ignore_expires=True)
+            http_client.cookies = cookie_jar
+        else:
+            print(f"Cookie file '{cookies_file}' not found. Ignoring cookies.")
+    
+    api = YouTubeTranscriptApi(http_client=http_client)
 
     for video in videos:
         video_id = video['id']
@@ -61,7 +76,7 @@ def download_transcripts(playlist_url, output_dir, languages):
         print(f"Processing video: {title} ({video_id})")
         
         try:
-            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            transcript_list = api.list(video_id)
         except TranscriptsDisabled:
             print(f"Transcripts are disabled for video {title}")
             continue
@@ -103,7 +118,8 @@ if __name__ == "__main__":
     parser.add_argument("playlist_url", help="URL of the YouTube playlist")
     parser.add_argument("--output_dir", "-o", default="transcripts", help="Output directory for transcripts")
     parser.add_argument("--languages", "-l", nargs="+", default=["en"], help="Language codes to download (e.g. en hi es). Defaults to 'en'.")
+    parser.add_argument("--cookies", "-c", help="Path to a Netscape formatted cookies.txt file to bypass IP blocks.")
     
     args = parser.parse_args()
     
-    download_transcripts(args.playlist_url, args.output_dir, args.languages)
+    download_transcripts(args.playlist_url, args.output_dir, args.languages, args.cookies)
