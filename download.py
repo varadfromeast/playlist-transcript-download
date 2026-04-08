@@ -1,8 +1,8 @@
 import os
-import sys
+import argparse
 import json
 import subprocess
-from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
 
 def get_videos_from_playlist(url):
     print("Fetching playlist videos...")
@@ -47,50 +47,85 @@ def format_timestamp(seconds):
 def sanitize_filename(name):
     return "".join(c for c in name if c.isalnum() or c in " ._-").strip()
 
-def download_transcripts(playlist_url, output_dir):
+def download_transcripts(playlist_url, output_dir, languages):
     os.makedirs(output_dir, exist_ok=True)
     videos = get_videos_from_playlist(playlist_url)
     if not videos:
         print("No videos found.")
         return
 
-    api = YouTubeTranscriptApi()
-    
     for video in videos:
         video_id = video['id']
         title = video['title']
-        filename = sanitize_filename(title) + ".txt"
-        filepath = os.path.join(output_dir, filename)
         
-        if os.path.exists(filepath):
-            print(f"Skipping {title} (already exists)")
-            continue
-
-        print(f"Fetching transcript for: {title} ({video_id})")
+        print(f"Processing video: {title} ({video_id})")
         
         try:
-            data = api.fetch(video_id)
-            
-            formatted_lines = []
-            for snippet in data:
-                start_time = format_timestamp(snippet['start'])
-                formatted_lines.append(f"[{start_time}] {snippet['text']}")
-                
-            formatted_transcript = "\n".join(formatted_lines)
-            
-            with open(filepath, 'w', encoding='utf-8') as f:
-                f.write(formatted_transcript)
-            print(f"Saved to {filepath}")
-            
+            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        except TranscriptsDisabled:
+            print(f"Transcripts are disabled for video {title}")
+            continue
         except Exception as e:
-            print(f"Could not get transcript for {title}: {e}")
+            print(f"Could not retrieve transcripts for {title}: {e}")
+            continue
+
+        for lang in languages:
+            filename = sanitize_filename(title) + f"_{lang}.txt"
+            filepath = os.path.join(output_dir, filename)
+            
+            if os.path.exists(filepath):
+                print(f"Skipping {lang} transcript for {title} (already exists)")
+                continue
+
+            try:
+                # Try to fetch the transcript in the requested language
+                transcript = transcript_list.find_transcript([lang])
+                data = transcript.fetch()
+                
+                formatted_lines = []
+                for snippet in data:
+                    start_time = format_timestamp(snippet['start'])
+                    formatted_lines.append(f"[{start_time}] {snippet['text']}")
+                    
+                formatted_transcript = "\n".join(formatted_lines)
+                
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(formatted_transcript)
+                print(f"Saved {lang} transcript to {filepath}")
+                
+            except NoTranscriptFound:
+                # Fallback: try to translate from an available transcript if the language isn't directly available
+                try:
+                    # Get the first available transcript (often the auto-generated or default manual one)
+                    first_transcript = next(iter(transcript_list))
+                    
+                    if first_transcript.is_translatable:
+                        translated_transcript = first_transcript.translate(lang)
+                        data = translated_transcript.fetch()
+                        
+                        formatted_lines = []
+                        for snippet in data:
+                            start_time = format_timestamp(snippet['start'])
+                            formatted_lines.append(f"[{start_time}] {snippet['text']}")
+                            
+                        formatted_transcript = "\n".join(formatted_lines)
+                        
+                        with open(filepath, 'w', encoding='utf-8') as f:
+                            f.write(formatted_transcript)
+                        print(f"Saved translated {lang} transcript to {filepath}")
+                    else:
+                        print(f"Transcript in language '{lang}' not found, and translation is disabled for {title}")
+                except Exception as e:
+                    print(f"Could not translate transcript to '{lang}' for {title}: {e}")
+            except Exception as e:
+                print(f"Error fetching {lang} transcript for {title}: {e}")
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python download.py <playlist_url> [output_dir]")
-        sys.exit(1)
-        
-    playlist_url = sys.argv[1]
-    output_dir = sys.argv[2] if len(sys.argv) > 2 else "transcripts"
+    parser = argparse.ArgumentParser(description="Download YouTube playlist transcripts.")
+    parser.add_argument("playlist_url", help="URL of the YouTube playlist")
+    parser.add_argument("--output_dir", "-o", default="transcripts", help="Output directory for transcripts")
+    parser.add_argument("--languages", "-l", nargs="+", default=["en"], help="Language codes to download (e.g. en hi es). Defaults to 'en'.")
     
-    download_transcripts(playlist_url, output_dir)
+    args = parser.parse_args()
+    
+    download_transcripts(args.playlist_url, args.output_dir, args.languages)
