@@ -18,7 +18,7 @@ A simple Python script to download YouTube video transcripts from an entire play
 ## Usage
 
 ```bash
-python download.py <playlist_url> [-o OUTPUT_DIR] [-l LANGUAGES [LANGUAGES ...]] [-c COOKIES]
+python download.py <playlist_url> [-o OUTPUT_DIR] [-l LANGUAGES [LANGUAGES ...]] [-c COOKIES] [-s SLEEP]
 ```
 
 ### Options
@@ -26,6 +26,7 @@ python download.py <playlist_url> [-o OUTPUT_DIR] [-l LANGUAGES [LANGUAGES ...]]
 - `-o OUTPUT_DIR`, `--output_dir OUTPUT_DIR`: Output directory for the transcripts. Defaults to `transcripts`.
 - `-l LANGUAGES`, `--languages LANGUAGES`: A list of language codes to download (e.g., `en`, `hi`, `es`). Defaults to `en`. If a language is not available for a given video, the script will skip downloading it.
 - `-c COOKIES`, `--cookies COOKIES`: Path to a `cookies.txt` file (in Netscape format) to bypass IP blocks. You can export this file using browser extensions like 'Get cookies.txt LOCALLY'.
+- `-s SLEEP`, `--sleep SLEEP`: Time to sleep between downloading each video's transcripts in seconds. Defaults to 3. Useful to avoid rate limits.
 
 ### Examples
 

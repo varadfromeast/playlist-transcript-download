@@ -4,6 +4,7 @@ import json
 import subprocess
 import requests
 import http.cookiejar
+import time
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
 
 def get_videos_from_playlist(url):
@@ -49,7 +50,7 @@ def format_timestamp(seconds):
 def sanitize_filename(name):
     return "".join(c for c in name if c.isalnum() or c in " ._-").strip()
 
-def download_transcripts(playlist_url, output_dir, languages, cookies_file=None):
+def download_transcripts(playlist_url, output_dir, languages, cookies_file=None, sleep_time=3):
     os.makedirs(output_dir, exist_ok=True)
     videos = get_videos_from_playlist(playlist_url)
     if not videos:
@@ -99,8 +100,8 @@ def download_transcripts(playlist_url, output_dir, languages, cookies_file=None)
                 
                 formatted_lines = []
                 for snippet in data:
-                    start_time = format_timestamp(snippet['start'])
-                    formatted_lines.append(f"[{start_time}] {snippet['text']}")
+                    start_time = format_timestamp(snippet.start)
+                    formatted_lines.append(f"[{start_time}] {snippet.text}")
                     
                 formatted_transcript = "\n".join(formatted_lines)
                 
@@ -112,6 +113,9 @@ def download_transcripts(playlist_url, output_dir, languages, cookies_file=None)
                 print(f"Transcript in language '{lang}' not found for {title}. Skipping.")
             except Exception as e:
                 print(f"Error fetching {lang} transcript for {title}: {e}")
+        
+        if sleep_time > 0:
+            time.sleep(sleep_time)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Download YouTube playlist transcripts.")
@@ -119,7 +123,8 @@ if __name__ == "__main__":
     parser.add_argument("--output_dir", "-o", default="transcripts", help="Output directory for transcripts")
     parser.add_argument("--languages", "-l", nargs="+", default=["en"], help="Language codes to download (e.g. en hi es). Defaults to 'en'.")
     parser.add_argument("--cookies", "-c", help="Path to a Netscape formatted cookies.txt file to bypass IP blocks.")
+    parser.add_argument("--sleep", "-s", type=int, default=3, help="Time to sleep between videos in seconds. Defaults to 3.")
     
     args = parser.parse_args()
     
-    download_transcripts(args.playlist_url, args.output_dir, args.languages, args.cookies)
+    download_transcripts(args.playlist_url, args.output_dir, args.languages, args.cookies, args.sleep)
