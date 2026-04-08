@@ -36,6 +36,14 @@ def get_videos_from_playlist(url):
             pass
     return videos
 
+def format_timestamp(seconds):
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    if hours > 0:
+        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+    return f"{minutes:02d}:{secs:02d}"
+
 def sanitize_filename(name):
     return "".join(c for c in name if c.isalnum() or c in " ._-").strip()
 
@@ -62,7 +70,13 @@ def download_transcripts(playlist_url, output_dir):
         
         try:
             data = api.fetch(video_id)
-            formatted_transcript = "\n".join([snippet['text'] for snippet in data])
+            
+            formatted_lines = []
+            for snippet in data:
+                start_time = format_timestamp(snippet['start'])
+                formatted_lines.append(f"[{start_time}] {snippet['text']}")
+                
+            formatted_transcript = "\n".join(formatted_lines)
             
             with open(filepath, 'w', encoding='utf-8') as f:
                 f.write(formatted_transcript)
