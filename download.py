@@ -78,7 +78,7 @@ def download_transcripts(playlist_url, output_dir, languages):
                 continue
 
             try:
-                # Try to fetch the transcript in the requested language
+                # Check if the requested language is available (either manually created or generated)
                 transcript = transcript_list.find_transcript([lang])
                 data = transcript.fetch()
                 
@@ -94,29 +94,7 @@ def download_transcripts(playlist_url, output_dir, languages):
                 print(f"Saved {lang} transcript to {filepath}")
                 
             except NoTranscriptFound:
-                # Fallback: try to translate from an available transcript if the language isn't directly available
-                try:
-                    # Get the first available transcript (often the auto-generated or default manual one)
-                    first_transcript = next(iter(transcript_list))
-                    
-                    if first_transcript.is_translatable:
-                        translated_transcript = first_transcript.translate(lang)
-                        data = translated_transcript.fetch()
-                        
-                        formatted_lines = []
-                        for snippet in data:
-                            start_time = format_timestamp(snippet['start'])
-                            formatted_lines.append(f"[{start_time}] {snippet['text']}")
-                            
-                        formatted_transcript = "\n".join(formatted_lines)
-                        
-                        with open(filepath, 'w', encoding='utf-8') as f:
-                            f.write(formatted_transcript)
-                        print(f"Saved translated {lang} transcript to {filepath}")
-                    else:
-                        print(f"Transcript in language '{lang}' not found, and translation is disabled for {title}")
-                except Exception as e:
-                    print(f"Could not translate transcript to '{lang}' for {title}: {e}")
+                print(f"Transcript in language '{lang}' not found for {title}. Skipping.")
             except Exception as e:
                 print(f"Error fetching {lang} transcript for {title}: {e}")
 

@@ -24,7 +24,7 @@ python download.py <playlist_url> [-o OUTPUT_DIR] [-l LANGUAGES [LANGUAGES ...]]
 ### Options
 - `playlist_url`: The URL of the YouTube playlist.
 - `-o OUTPUT_DIR`, `--output_dir OUTPUT_DIR`: Output directory for the transcripts. Defaults to `transcripts`.
-- `-l LANGUAGES`, `--languages LANGUAGES`: A list of language codes to download (e.g., `en`, `hi`, `es`). Defaults to `en`. If a language is not directly available, the script will attempt to automatically translate the transcript into the requested language.
+- `-l LANGUAGES`, `--languages LANGUAGES`: A list of language codes to download (e.g., `en`, `hi`, `es`). Defaults to `en`. If a language is not available for a given video, the script will skip downloading it.
 
 ### Examples
 
